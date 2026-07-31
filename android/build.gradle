@@ -3,11 +3,11 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'expo.modules.mymodule'
+group = 'expo.modules.videokit'
 version = '0.1.0'
 
 android {
-  namespace "expo.modules.mymodule"
+  namespace "expo.modules.videokit"
   defaultConfig {
     versionCode 1
     versionName "0.1.0"
@@ -15,4 +15,8 @@ android {
   lintOptions {
     abortOnError false
   }
+}
+
+dependencies {
+  implementation("com.github.xentechltd:android-video-kit:v1.0.1")
 }

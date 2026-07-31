@@ -1,14 +1,26 @@
 {
   "expo": {
-    "name": "my-module-example",
-    "slug": "my-module-example",
+    "name": "expo-video-kit-example",
+    "slug": "expo-video-kit-example",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "plugins": [
+      "expo-video-kit",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow access to your videos to convert them."
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "expo.modules.mymodule.example"
+      "bundleIdentifier": "expo.modules.videokit.example",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "Allow access to your videos to convert them."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,7 +30,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "expo.modules.mymodule.example"
+      "package": "expo.modules.videokit.example"
     },
     "web": {
       "favicon": "./assets/favicon.png"

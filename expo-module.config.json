@@ -1,9 +1,9 @@
 {
   "platforms": ["apple", "android", "web"],
   "apple": {
-    "modules": ["MyModule"]
+    "modules": ["ExpoVideoKitModule"]
   },
   "android": {
-    "modules": ["expo.modules.mymodule.MyModule"]
+    "modules": ["expo.modules.videokit.ExpoVideoKitModule"]
   }
 }
