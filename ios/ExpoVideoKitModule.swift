@@ -79,14 +79,43 @@ private func fileSize(atPath path: String) -> Int64? {
   return size.int64Value
 }
 
+private enum ProgressPollingMode {
+  case convertOnly
+  case convertAndUpload
+}
+
 private final class ProgressReporter {
   private let emit: (Double) -> Void
+  private let pollingMode: ProgressPollingMode
   private var lastReported: Double = -1
   private var pollTimer: DispatchSourceTimer?
   private var nativeProgress: Double = 0
 
-  init(emit: @escaping (Double) -> Void) {
+  init(
+    pollingMode: ProgressPollingMode = .convertOnly,
+    emit: @escaping (Double) -> Void
+  ) {
+    self.pollingMode = pollingMode
     self.emit = emit
+  }
+
+  private var filePollEstimateCap: Double {
+    switch pollingMode {
+    case .convertOnly:
+      return 0.95
+    case .convertAndUpload:
+      // Native maps convert to 0–0.5; cap poll at 95% of that band.
+      return 0.475
+    }
+  }
+
+  private var filePollScale: Double {
+    switch pollingMode {
+    case .convertOnly:
+      return 1
+    case .convertAndUpload:
+      return 0.5
+    }
   }
 
   func startPollingOutputFile(outputPath: String, inputFileSize: Int64?) {
@@ -97,7 +126,7 @@ private final class ProgressReporter {
     let timer = DispatchSource.makeTimerSource(queue: .main)
     timer.schedule(deadline: .now() + .milliseconds(250), repeating: .milliseconds(250))
     timer.setEventHandler { [weak self] in
-      guard let self else {
+      guard let self, self.pollTimer != nil else {
         return
       }
 
@@ -106,21 +135,29 @@ private final class ProgressReporter {
       }
 
       // Re-encoded output size can differ from input; treat growth as a lower-bound signal.
-      let estimated = min(0.95, Double(outputSize) / Double(inputFileSize) * 1.1)
+      let rawEstimate = Double(outputSize) / Double(inputFileSize) * 1.1 * self.filePollScale
+      let estimated = min(self.filePollEstimateCap, rawEstimate)
       self.report(max(self.nativeProgress, estimated))
     }
     pollTimer = timer
     timer.resume()
   }
 
+  func stopPolling() {
+    pollTimer?.cancel()
+    pollTimer = nil
+  }
+
   func updateNativeProgress(_ progress: Float) {
     nativeProgress = Double(progress)
+    if pollingMode == .convertAndUpload && nativeProgress >= 0.5 {
+      stopPolling()
+    }
     report(nativeProgress)
   }
 
   func finish() {
-    pollTimer?.cancel()
-    pollTimer = nil
+    stopPolling()
     report(1)
   }
 
@@ -219,7 +256,7 @@ public class ExpoVideoKitModule: Module {
       let inputURL = try resolveURL(from: inputUri)
       let resolvedOutputPath = outputPath.map(resolveOutputPath(_:))
       let inputFileSize = fileSize(atPath: inputURL.path)
-      let progressReporter = ProgressReporter { progress in
+      let progressReporter = ProgressReporter(pollingMode: .convertAndUpload) { progress in
         self.sendEvent("onProgress", ["progress": progress])
       }
 

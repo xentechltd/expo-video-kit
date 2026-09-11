@@ -102,7 +102,8 @@ await videoKit.convertAndUpload(
 | `upload(filePath, url, config?, onProgress?)` | Upload to a presigned URL |
 | `convertAndUpload(inputURL, uploadURL, conversionConfig?, uploadConfig?, onProgress?, outputPath?)` | Convert then upload (progress 0–50% convert, 50–100% upload) |
 
-- `outputPath` is optional in `convertAndUpload`; default is app cache as `converted_{original_name}`.
+- `convertAndUpload` maps progress to a single 0–1 scale: **0–0.5** convert, **0.5–1.0** upload. File-size polling applies only during convert; upload progress comes from the HTTP stack.
+- `outputPath` is optional in `convertAndUpload`; default is app cache as `converted_{original_name}`. Pass an explicit path if you want smoother convert-phase progress (polling needs a known output file).
 - Progress callbacks receive values in `0.0–1.0`.
 - Pass filesystem paths or `file://` URIs; the module normalizes them on native.
 
@@ -134,7 +135,8 @@ On iOS, add a photo-library usage string (plugin or `ios.infoPlist`), for exampl
 | Native module missing / convert does nothing | Run `npx expo prebuild --clean`, then `npx expo run:ios` or `run:android`. Confirm `"plugins": ["expo-video-kit"]` is in app config. |
 | Android dependency not found | Ensure prebuild ran after install; the plugin adds JitPack to Gradle. |
 | Convert fails immediately | Use a readable input path/URI and a writable **filesystem** output path (not only a `file://` string if native rejects it — this module normalizes URIs when possible). |
-| Progress stays at 0% until done | Some sources report sparse progress; the native layer also estimates from output file size during conversion. |
+| Progress stays at 0% until done (convert) | Some sources report sparse progress; pass an explicit `outputPath` so the bridge can estimate from output file growth during convert. |
+| Progress stuck at ~95% during `convertAndUpload` upload | File polling now stops at 50% so upload bytes can drive 50–100%. Upgrade to a build that includes this fix. |
 
 ## Install from npm (optional)
 

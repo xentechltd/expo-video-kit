@@ -80,7 +80,9 @@ class ExpoVideoKitModule : Module() {
 
       val resolvedOutputPath = outputPath?.let(::resolveOutputPath)
       val inputFileSize = resolveFileSize(context, inputUri)
-      val progressReporter = ProgressReporter { progress ->
+      val progressReporter = ProgressReporter(
+        pollingMode = ProgressPollingMode.ConvertAndUpload,
+      ) { progress ->
         sendEvent("onProgress", bundleOf("progress" to progress.toDouble()))
       }
 
@@ -108,13 +110,31 @@ class ExpoVideoKitModule : Module() {
   }
 }
 
+private enum class ProgressPollingMode {
+  ConvertOnly,
+  ConvertAndUpload,
+}
+
 private class ProgressReporter(
   private val emit: (Float) -> Unit,
+  private val pollingMode: ProgressPollingMode = ProgressPollingMode.ConvertOnly,
 ) {
   private var lastReported = -1f
   private var nativeProgress = 0f
   private var pollRunnable: Runnable? = null
   private var pollHandler: Handler? = null
+
+  private val filePollEstimateCap: Float
+    get() = when (pollingMode) {
+      ProgressPollingMode.ConvertOnly -> 0.95f
+      ProgressPollingMode.ConvertAndUpload -> 0.475f
+    }
+
+  private val filePollScale: Float
+    get() = when (pollingMode) {
+      ProgressPollingMode.ConvertOnly -> 1f
+      ProgressPollingMode.ConvertAndUpload -> 0.5f
+    }
 
   fun startPollingOutputFile(outputPath: String, inputFileSize: Long?, handler: Handler) {
     if (inputFileSize == null || inputFileSize <= 0L) {
@@ -124,12 +144,15 @@ private class ProgressReporter(
     pollHandler = handler
     val runnable = object : Runnable {
       override fun run() {
+        val activeHandler = pollHandler ?: return
+
         val outputSize = File(outputPath).length()
         if (outputSize > 0L) {
-          val estimated = min(0.95f, outputSize.toFloat() / inputFileSize.toFloat() * 1.1f)
+          val rawEstimate = outputSize.toFloat() / inputFileSize.toFloat() * 1.1f * filePollScale
+          val estimated = min(filePollEstimateCap, rawEstimate)
           report(max(nativeProgress, estimated))
         }
-        pollHandler?.postDelayed(this, 250)
+        activeHandler.postDelayed(this, 250)
       }
     }
 
@@ -137,17 +160,24 @@ private class ProgressReporter(
     handler.postDelayed(runnable, 250)
   }
 
-  fun updateNativeProgress(progress: Float) {
-    nativeProgress = progress
-    report(progress)
-  }
-
-  fun finish() {
+  fun stopPolling() {
     pollRunnable?.let { runnable ->
       pollHandler?.removeCallbacks(runnable)
     }
     pollRunnable = null
     pollHandler = null
+  }
+
+  fun updateNativeProgress(progress: Float) {
+    nativeProgress = progress
+    if (pollingMode == ProgressPollingMode.ConvertAndUpload && progress >= 0.5f) {
+      stopPolling()
+    }
+    report(progress)
+  }
+
+  fun finish() {
+    stopPolling()
     report(1f)
   }
 
