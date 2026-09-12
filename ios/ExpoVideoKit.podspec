@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name           = 'ExpoVideoKit'
-  s.version        = '0.1.1'
+  s.version        = '0.1.2'
   s.summary        = 'Expo module for native video conversion and upload'
   s.description    = 'Wraps ios-video-kit and android-video-kit for Expo apps.'
   s.author         = 'Xentech'
@@ -16,7 +16,7 @@ Pod::Spec.new do |s|
   s.static_framework = true
 
   s.dependency 'ExpoModulesCore'
-  s.dependency 'VideoKit', '~> 1.0.1'
+  s.dependency 'VideoKit', '~> 1.0.2'
 
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',

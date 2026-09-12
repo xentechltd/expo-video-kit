@@ -15,10 +15,12 @@ This module does not reimplement video processing. It wires your app to:
 
 | Platform | Library | Version (via config plugin / Gradle) |
 |----------|---------|--------------------------------------|
-| iOS | [ios-video-kit](https://github.com/xentechltd/ios-video-kit) | Git tag `1.0.1` (CocoaPods `VideoKit ~> 1.0.1`) |
+| iOS | [ios-video-kit](https://github.com/xentechltd/ios-video-kit) | Git tag `1.0.2` (CocoaPods `VideoKit ~> 1.0.2`) |
 | Android | [android-video-kit](https://github.com/xentechltd/android-video-kit) | JitPack `v1.0.1` |
 
 You must use the **config plugin** (`"plugins": ["expo-video-kit"]`) so prebuild adds the pod and Maven repo. Installing the package alone is not enough for native linking.
+
+After upgrading **ios-video-kit**, run `npx expo prebuild --clean` so the config plugin refreshes the `VideoKit` pod tag.
 
 ## Install from GitHub
 
@@ -35,7 +37,7 @@ Add the dependency in your Expo app:
 Pin a release tag or commit for reproducible builds:
 
 ```json
-"expo-video-kit": "github:xentechltd/expo-video-kit#v0.1.0"
+"expo-video-kit": "github:xentechltd/expo-video-kit#v0.1.2"
 ```
 
 Then install:
@@ -102,10 +104,15 @@ await videoKit.convertAndUpload(
 | `upload(filePath, url, config?, onProgress?)` | Upload to a presigned URL |
 | `convertAndUpload(inputURL, uploadURL, conversionConfig?, uploadConfig?, onProgress?, outputPath?)` | Convert then upload (progress 0–50% convert, 50–100% upload) |
 
-- `convertAndUpload` maps progress to a single 0–1 scale: **0–0.5** convert, **0.5–1.0** upload. File-size polling applies only during convert; upload progress comes from the HTTP stack.
-- `outputPath` is optional in `convertAndUpload`; default is app cache as `converted_{original_name}`. Pass an explicit path if you want smoother convert-phase progress (polling needs a known output file).
-- Progress callbacks receive values in `0.0–1.0`.
-- Pass filesystem paths or `file://` URIs; the module normalizes them on native.
+### Progress
+
+- Callbacks receive values in **`0.0–1.0`**.
+- **`convertAndUpload`:** native VideoKit maps **0–0.5** to convert and **0.5–1.0** to upload on a single callback.
+- **iOS:** progress is forwarded from **ios-video-kit** (no file-size polling in this module).
+- **Android:** during **convert** (and the convert phase of `convertAndUpload`), the bridge may supplement sparse encoder callbacks by polling output file size when an output path is known. **Upload** progress always comes from the native HTTP stack.
+- `outputPath` is optional in `convertAndUpload` (default: app cache as `converted_{original_name}`). On Android, an explicit path can improve convert-phase progress when polling is used.
+
+Pass filesystem paths or `file://` URIs; the module normalizes them on native.
 
 ### Picking videos in the app
 
@@ -134,9 +141,9 @@ On iOS, add a photo-library usage string (plugin or `ios.infoPlist`), for exampl
 |---------|-------------|
 | Native module missing / convert does nothing | Run `npx expo prebuild --clean`, then `npx expo run:ios` or `run:android`. Confirm `"plugins": ["expo-video-kit"]` is in app config. |
 | Android dependency not found | Ensure prebuild ran after install; the plugin adds JitPack to Gradle. |
-| Convert fails immediately | Use a readable input path/URI and a writable **filesystem** output path (not only a `file://` string if native rejects it — this module normalizes URIs when possible). |
-| Progress stays at 0% until done (convert) | Some sources report sparse progress; pass an explicit `outputPath` so the bridge can estimate from output file growth during convert. |
-| Progress stuck at ~95% during `convertAndUpload` upload | File polling now stops at 50% so upload bytes can drive 50–100%. Upgrade to a build that includes this fix. |
+| Convert fails immediately | Use a readable input path/URI and a writable **filesystem** output path. |
+| iOS progress flat or jumpy | Upgrade to **expo-video-kit v0.1.2+** and **ios-video-kit 1.0.2+** (`prebuild --clean`). |
+| Android convert progress at 0% until done | Pass an explicit `outputPath` so the bridge can poll output file growth during convert. |
 
 ## Install from npm (optional)
 
@@ -161,11 +168,12 @@ npx expo run:ios
 
 The example app depends on `"expo-video-kit": "file:.."`. Generated `example/ios` and `example/android` folders are gitignored; run prebuild locally.
 
-### First release (maintainers)
+### Release (maintainers)
 
-1. `npm run build` and commit the `build/` output (GitHub installs use `main` without running `prepare` in all setups).
-2. Push to `https://github.com/xentechltd/expo-video-kit`.
-3. Tag the release so consumers can pin: `git tag v0.1.0 && git push origin v0.1.0` (matches `package.json` version and the podspec source tag).
+1. Bump `package.json`, `ios/ExpoVideoKit.podspec`, and `android/build.gradle` version fields.
+2. Update [CHANGELOG](./CHANGELOG.md).
+3. `npm run build` and commit the `build/` output.
+4. Push `main`, then tag and push: `git tag vX.Y.Z && git push origin vX.Y.Z` (tag must match podspec `v#{version}`).
 
 ## License
 

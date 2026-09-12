@@ -4,13 +4,13 @@ plugins {
 }
 
 group = 'expo.modules.videokit'
-version = '0.1.1'
+version = '0.1.2'
 
 android {
   namespace "expo.modules.videokit"
   defaultConfig {
-    versionCode 2
-    versionName "0.1.1"
+    versionCode 3
+    versionName "0.1.2"
   }
   lintOptions {
     abortOnError false

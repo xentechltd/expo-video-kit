@@ -7,7 +7,7 @@ const {
 const VIDEO_KIT_POD = {
   name: 'VideoKit',
   git: 'https://github.com/xentechltd/ios-video-kit.git',
-  tag: '1.0.1',
+  tag: '1.0.2',
 };
 
 const JITPACK_MAVEN_REPO = 'https://jitpack.io';
@@ -29,7 +29,10 @@ const withExpoVideoKit = (config) => {
   config = withPodfileProperties(config, (podfileConfig) => {
     const extraPods = parseJsonArray(podfileConfig.modResults['apple.extraPods']);
 
-    if (!extraPods.some((pod) => pod.name === VIDEO_KIT_POD.name)) {
+    const videoKitIndex = extraPods.findIndex((pod) => pod.name === VIDEO_KIT_POD.name);
+    if (videoKitIndex >= 0) {
+      extraPods[videoKitIndex] = { ...extraPods[videoKitIndex], ...VIDEO_KIT_POD };
+    } else {
       extraPods.push(VIDEO_KIT_POD);
     }
 
